@@ -1,0 +1,793 @@
+========== PROJECT STRUCTURE ==========
+src/
+  ai_feeder.py
+  App.css
+  App.tsx
+  index.css
+  main.tsx
+  assets/
+  components/
+    Button.tsx
+    Input.tsx
+  pages/
+    AuthPage.tsx
+  services/
+    auth.ts
+
+========================================
+
+========== SOURCE CODE CONTENT ==========
+
+--- FILE: App.css ---
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+
+--- FILE: App.tsx ---
+import AuthPage from './pages/AuthPage';
+
+function App() {
+  return (
+    <div className="App">
+      <AuthPage />
+    </div>
+  );
+}
+export default App;
+
+--- FILE: index.css ---
+/* 修改后的 index.css */
+@import "tailwindcss";
+
+
+/* 现代感十足的静止渐变背景 */
+/* 我们使用三个层级的色彩交汇，营造出柔和的“网格渐变”感 */
+.bg-static-gradient {
+  background-color: #f8fafc; /* 底色 */
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(243, 100%, 93%, 1) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(270, 100%, 94%, 1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(210, 100%, 92%, 1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(243, 100%, 95%, 1) 0px, transparent 50%);
+}
+
+/* 保留玻璃拟态效果 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+--- FILE: main.tsx ---
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom' // 引入
+import './index.css'
+import App from './App.tsx'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </StrictMode>,
+)
+
+--- FILE: components\Button.tsx ---
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  loading?: boolean;
+}
+
+export const Button = ({ children, loading, ...props }: ButtonProps) => (
+  <button 
+    {...props}
+    disabled={loading || props.disabled}
+    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+  >
+    {loading ? (
+      <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+      </svg>
+    ) : children}
+  </button>
+);
+
+--- FILE: components\Input.tsx ---
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+  error?: string;
+  leftElement?: React.ReactNode;
+  rightElement?: React.ReactNode;
+}
+
+export const Input = ({ label, error, leftElement, rightElement, ...props }: InputProps) => (
+  <div className="space-y-1 w-full text-left">
+    <label className="block text-[11px] sm:text-sm font-bold text-gray-700 ml-1 uppercase tracking-wider">{label}</label>
+    <div className="relative flex items-center group">
+      {leftElement && (
+        <div className="absolute left-3 z-10 border-r border-gray-200 pr-2 h-4 sm:h-5 flex items-center">
+          {leftElement}
+        </div>
+      )}
+      <input
+        {...props}
+        className={`
+          w-full text-sm sm:text-base transition-all duration-300 outline-none rounded-xl border
+          ${leftElement ? 'pl-16 sm:pl-20' : 'pl-4'} 
+          ${rightElement ? 'pr-24 sm:pr-28' : 'pr-4'}
+          py-2 sm:py-2.5 bg-gray-50/50 hover:bg-white focus:bg-white
+          ${error ? 'border-red-400 ring-4 ring-red-50' : 'border-gray-200 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500'}
+        `}
+      />
+      {rightElement && (
+        <div className="absolute right-1.5 sm:right-2">
+          {rightElement}
+        </div>
+      )}
+    </div>
+    {error && <p className="text-[10px] text-red-500 ml-1 mt-0.5 font-medium animate-in fade-in zoom-in-95">{error}</p>}
+  </div>
+);
+
+--- FILE: pages\AuthPage.tsx ---
+// pages/AuthPage.tsx
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Input } from '../components/Input';
+import { Button } from '../components/Button';
+import { authService } from '../services/auth';
+import logoSvg from '../assets/logo.svg';
+
+type AuthMode = 'login' | 'register' | 'forgot';
+type LoginMethod = 'phone' | 'email';
+
+const REMEMBER_KEY = 'know_ai_remembered';
+const TOKEN_KEY = 'know_ai_token';
+
+const INITIAL_FORM_DATA = {
+  areaCode: '+86', phone: '', email: '', password: '', confirmPassword: '', code: '', captchaInput: ''
+};
+
+export default function AuthPage() {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [method, setMethod] = useState<LoginMethod>('phone');
+  
+  const [resetStep, setResetStep] = useState(1); 
+  const [loading, setLoading] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [captchaData, setCaptchaData] = useState({ img: '', key: '' });
+  const [agreed, setAgreed] = useState(false);
+  const [rememberPassword, setRememberPassword] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  // 使用 ref 来管理定时器以避免内存泄漏 (修复 2.2)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // --- 1. 验证码与倒计时逻辑 ---
+  const refreshCaptcha = useCallback(async () => {
+    try {
+      const res = await authService.getCaptcha();
+      if (res.data) setCaptchaData(res.data);
+    } catch (err) { console.error("获取验证码失败"); }
+  }, []);
+
+  useEffect(() => { refreshCaptcha(); }, [refreshCaptcha, mode, method]);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  // --- 2. 初始化与自动登录逻辑 ---
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBER_KEY);
+    if (saved) {
+      const { account, password } = JSON.parse(saved);
+      setFormData(prev => ({ ...prev, email: account, password: password }));
+      setRememberPassword(true);
+      setMethod('email'); 
+    }
+
+    const checkAutoLogin = async () => {
+      // 👈 修复 1.2 配套：同时校验两种 storage
+      const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+      if (token) { 
+        try {
+          const res = await authService.getProfile();
+          setMessage({ type: 'success', text: `自动登录中... 欢迎 ${res.data?.nickname}` });
+          // 👈 修复 2.2：记录 timer，并在组件卸载时清理
+          timerRef.current = setTimeout(() => navigate('/dashboard'), 1000); 
+        } catch (e) {
+          localStorage.removeItem(TOKEN_KEY);
+          sessionStorage.removeItem(TOKEN_KEY);
+        }
+      }
+    };
+    checkAutoLogin();
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [navigate]);
+
+  // --- 3. 密码强度计算 ---
+  const passwordInfo = useMemo(() => {
+    const pass = formData.password;
+    if (!pass) return { score: 0, text: '', color: 'bg-gray-200' };
+    if (pass.length < 6) return { score: 1, text: '太短', color: 'bg-red-400' };
+    let score = 0;
+    if (/[a-zA-Z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[^A-Za-z0-9]/.test(pass)) score++;
+    const meta = [{ text: '弱', color: 'bg-red-400' }, { text: '中', color: 'bg-yellow-500' }, { text: '强', color: 'bg-green-500' }];
+    return { score, ...meta[Math.max(0, score - 1)] };
+  }, [formData.password]);
+
+  // --- 4. 提交事件处理 ---
+  const handleSendCode = async () => {
+    const isPhone = method === 'phone';
+    const target = isPhone ? formData.phone : formData.email;
+
+    if (!target) return setMessage({ type: 'error', text: '请输入账号' });
+    // 👈 修复 2.1：放宽手机号正则，仅校验 5-15 位数字以兼容区号变更
+    if (isPhone && !/^\d{5,15}$/.test(formData.phone)) return setMessage({ type: 'error', text: '手机号格式不正确' });
+    if (!isPhone && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return setMessage({ type: 'error', text: '邮箱格式不正确' });
+    if (!formData.captchaInput) return setMessage({ type: 'error', text: '请输入图形验证码' });
+
+    try {
+      await authService.sendCode({
+        phone: isPhone ? `${formData.areaCode}${formData.phone}` : undefined,
+        email: (!isPhone) ? formData.email : undefined,
+        captchaInput: formData.captchaInput,
+        captchaKey: captchaData.key
+      });
+      setCountdown(60);
+      setMessage({ type: 'success', text: '验证码已发送' });
+    } catch (err) {
+      const error = err as Error;
+      setMessage({ type: 'error', text: error.message });
+      refreshCaptcha();
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage({ type: '', text: '' });
+    if (mode !== 'forgot' && !agreed) return setMessage({ type: 'error', text: '请阅读并勾选用户协议' });
+
+    setLoading(true);
+    try {
+      if (mode === 'forgot') {
+        if (resetStep === 1) {
+          if (!formData.code) throw new Error("请输入验证码");
+          setResetStep(2);
+          setMessage({ type: 'success', text: '身份验证成功，请设置新密码' });
+        } else {
+          if (formData.password !== formData.confirmPassword) throw new Error("两次密码不一致");
+          await authService.resetPassword({
+            phone: method === 'phone' ? `${formData.areaCode}${formData.phone}` : undefined,
+            email: method === 'email' ? formData.email : undefined,
+            code: formData.code,
+            newPassword: formData.password
+          });
+          setMessage({ type: 'success', text: '密码重置成功，请登录' });
+          setMode('login');
+          setResetStep(1);
+          retainFormData(); // 👈 优化体验
+        }
+      } else if (mode === 'login') {
+        const payload = method === 'phone' 
+          ? { 
+              phone: `${formData.areaCode}${formData.phone}`, 
+              code: formData.code,
+              autoLogin // 👈 传递真实 autoLogin 状态
+            }
+          : { 
+              username: formData.email, 
+              password: formData.password,
+              autoLogin // 👈 传递真实 autoLogin 状态
+            };
+
+        const res = await authService.login(payload);
+
+        if (rememberPassword && method === 'email') {
+          localStorage.setItem(REMEMBER_KEY, JSON.stringify({ account: formData.email, password: formData.password }));
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+
+        setMessage({ type: 'success', text: `欢迎回来，${res.data?.user?.nickname}` });
+        // 👈 修复 2.2：挂载卸载内存控制
+        timerRef.current = setTimeout(() => navigate('/dashboard'), 800);
+
+      } else if (mode === 'register') {
+        if (formData.password !== formData.confirmPassword) throw new Error("两次输入密码不一致");
+        await authService.register({
+          phone: method === 'phone' ? `${formData.areaCode}${formData.phone}` : undefined,
+          email: method === 'email' ? formData.email : undefined,
+          password: formData.password,
+          code: formData.code
+        });
+        setMessage({ type: 'success', text: '注册成功' });
+        setMode('login');
+        retainFormData(); // 👈 优化体验
+      }
+    } catch (err) {
+      const error = err as Error;
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 5. UI 渲染辅助函数 ---
+  // 👈 修复 2.3：切换标签时不完全重置，保留用户的账号和手机号输入，只清空敏感和校验数据
+  const retainFormData = () => {
+    setFormData(prev => ({
+      ...prev,
+      password: '', confirmPassword: '', code: '', captchaInput: ''
+    }));
+  };
+
+  const switchMode = (newMode: AuthMode) => {
+    setMode(newMode);
+    setMessage({type:'', text:''});
+    retainFormData(); 
+    if (newMode === 'login') setResetStep(1);
+  };
+
+  const needsVerification = !(mode === 'login' && method === 'email');
+
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-static-gradient p-4 sm:p-6 overflow-y-auto">
+      <div className="w-full max-w-[460px] glass-card p-6 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl transition-all duration-300 relative">
+        
+        {/* Header 区 */}
+        <div className="flex justify-between items-center mb-6 sm:mb-8 gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+            <img src={logoSvg} alt="KnowAI Logo" className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 object-contain" />
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight truncate">
+                {mode === 'login' ? '登录' : mode === 'register' ? '注册' : '找回密码'}
+              </h1>
+              <p className="text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1 font-medium tracking-wide truncate">
+                {mode === 'forgot' ? (resetStep === 1 ? '安全验证' : '重置密码') : 'KNOW AI 管理系统'}
+              </p>
+            </div>
+          </div>
+
+          {mode !== 'forgot' && (
+            <div className="flex flex-shrink-0 bg-slate-100/50 p-1 rounded-xl sm:rounded-2xl">
+              <button onClick={() => switchMode('login')} className={`px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl transition-all ${mode === 'login' ? 'bg-white shadow-md text-indigo-600' : 'text-gray-400'}`}>登录</button>
+              <button onClick={() => switchMode('register')} className={`px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl transition-all ${mode === 'register' ? 'bg-white shadow-md text-indigo-600' : 'text-gray-400'}`}>注册</button>
+            </div>
+          )}
+        </div>
+
+        {/* 返回登录按钮 */}
+        {mode === 'forgot' && (
+          <button onClick={() => switchMode('login')} className="mb-6 text-xs font-bold text-indigo-600 flex items-center gap-1 hover:opacity-80 transition-opacity">
+            ← 返回登录
+          </button>
+        )}
+
+        {/* 登录/注册/找回密码 Tab 切换 */}
+        <div className="flex gap-6 sm:gap-8 mb-6 sm:mb-8 border-b border-gray-100 relative overflow-x-auto no-scrollbar">
+          {(['phone', 'email'] as const).map((m) => (
+            <button 
+              key={m} 
+              onClick={() => { 
+                setMethod(m);
+                setMessage({type:'', text:''}); 
+                retainFormData(); // 👈 优化体验
+              }} 
+              className={`pb-3 text-xs sm:text-sm font-bold transition-all relative flex-shrink-0 ${method === m ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              {m === 'phone' 
+                ? (mode === 'login' ? '手机验证' : mode === 'register' ? '手机号注册' : '手机找回') 
+                : (mode === 'login' ? '密码登录' : mode === 'register' ? '邮箱注册' : '邮箱找回')}
+              {method === m && <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo-600 rounded-full animate-in fade-in" />}
+            </button>
+          ))}
+        </div>
+
+        {/* 提示信息 */}
+        {message.text && (
+          <div className={`mb-6 p-3 sm:p-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium border animate-in slide-in-from-top-2 ${message.type === 'error' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-green-50 border-green-100 text-green-600'}`}>
+            {message.text}
+          </div>
+        )}
+
+        {/* 表单主体 */}
+        <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
+          
+          {/* 账号/手机号与验证码域 */}
+          {(mode !== 'forgot' || resetStep === 1) && (
+            <>
+              {method === 'phone' ? (
+                <Input 
+                  label="手机号码" type="tel" placeholder="请输入手机号"
+                  leftElement={<input type="text" className="w-10 sm:w-12 bg-transparent text-slate-800 font-bold text-xs sm:text-sm outline-none" value={formData.areaCode} onChange={e => setFormData({...formData, areaCode: e.target.value})}/>}
+                  value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required
+                />
+              ) : (
+                <Input label={mode === 'login' ? "账号" : "邮箱地址"} type="text" placeholder={mode === 'login' ? "手机号 / 邮箱" : "name@example.com"} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
+              )}
+
+              {needsVerification && (
+                <Input 
+                  label="图形验证码" placeholder="右侧字符" value={formData.captchaInput} onChange={e => setFormData({...formData, captchaInput: e.target.value})}
+                  rightElement={<img src={captchaData.img} alt="captcha" onClick={refreshCaptcha} className="h-8 sm:h-9 w-20 sm:w-24 object-cover rounded-lg cursor-pointer hover:opacity-80 bg-slate-100"/>}
+                />
+              )}
+
+              {needsVerification && (
+                <Input 
+                  label="动态验证码" placeholder="6位验证码" maxLength={6} value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})}
+                  rightElement={<button type="button" disabled={countdown > 0} onClick={handleSendCode} className="text-indigo-600 text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1.5 hover:bg-indigo-50 rounded-lg disabled:text-gray-300">{countdown > 0 ? `${countdown}s` : '获取验证码'}</button>}
+                />
+              )}
+            </>
+          )}
+
+          {/* 密码域 */}
+          {( (mode === 'forgot' && resetStep === 2) || (mode === 'login' && method === 'email') || mode === 'register' ) && (
+            <div className="space-y-2 animate-in fade-in duration-500">
+              <Input 
+                label={mode === 'forgot' ? "新密码" : (mode === 'register' ? "设置密码" : "密码")} 
+                type="password" placeholder="请输入密码" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required 
+              />
+              {mode !== 'login' && formData.password && (
+                <div className="px-1">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase">强度: {passwordInfo.text}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    {[1, 2, 3].map((s) => (
+                      <div key={s} className={`h-1 flex-1 rounded-full transition-all duration-500 ${passwordInfo.score >= s ? passwordInfo.color : 'bg-slate-100'}`} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 确认密码域 */}
+          {(mode === 'register' || (mode === 'forgot' && resetStep === 2)) && (
+            <Input label="确认密码" type="password" placeholder="再次输入密码" value={formData.confirmPassword} onChange={e => setFormData({...formData, confirmPassword: e.target.value})} error={formData.confirmPassword && formData.password !== formData.confirmPassword ? '密码输入不一致' : ''} required />
+          )}
+
+          {/* 记住密码 & 忘记密码操作栏 */}
+          {mode === 'login' && (
+            <div className="flex flex-wrap items-center justify-between gap-y-2 px-1 text-[10px] sm:text-xs animate-in fade-in duration-300">
+              <div className="flex items-center gap-3 sm:gap-4">
+                {method === 'email' && (
+                  <>
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input type="checkbox" checked={rememberPassword} onChange={e => setRememberPassword(e.target.checked)} className="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-50 transition-all" />
+                      <span className="text-gray-500 group-hover:text-slate-700 font-medium transition-colors">记住密码</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input type="checkbox" checked={autoLogin} onChange={e => setAutoLogin(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 transition-all" />
+                      <span className="text-gray-500 group-hover:text-slate-700 font-medium transition-colors">自动登录</span>
+                    </label>
+                  </>
+                )}
+              </div>
+              <button type="button" onClick={() => switchMode('forgot')} className="font-bold text-indigo-600 hover:text-indigo-500 underline underline-offset-2 transition-colors">忘记密码？</button>
+            </div>
+          )}
+
+          <Button 
+            loading={loading} type="submit" 
+            className={`h-11 sm:h-12 shadow-xl rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold transition-all ${ (mode !== 'forgot' && !agreed) ? 'grayscale opacity-70 cursor-not-allowed' : 'shadow-indigo-100 hover:-translate-y-0.5 active:translate-y-0'}`}
+          >
+            {mode === 'login' ? '进入系统' : mode === 'register' ? '立即注册' : (resetStep === 1 ? '下一步' : '重置密码')}
+          </Button>
+        </form>
+
+        {/* 底部协议区 */}
+        {mode !== 'forgot' && (
+          <div className="mt-8 sm:mt-10 text-center">
+            <label className="inline-flex items-start justify-center gap-2 cursor-pointer group px-2">
+              <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 transition-all" />
+              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium text-left sm:text-center">
+                我已阅读并同意 <a href="#" className="text-slate-600 font-bold hover:text-indigo-600 px-0.5 transition-colors">《服务协议》</a> 与 <a href="#" className="text-slate-600 font-bold hover:text-indigo-600 px-0.5 transition-colors">《隐私政策》</a>
+              </p>
+            </label>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+--- FILE: services\auth.ts ---
+// services/auth.ts
+export interface ApiResponse<T = any> {
+  code: number;
+  message: string;
+  data?: T;
+}
+
+export interface MockUser {
+  id: string;
+  phone?: string;
+  email?: string;
+  password: string;
+  nickname: string;
+  avatar: string;
+  createdAt: string;
+}
+
+export interface MockCode {
+  phone?: string;
+  email?: string;
+  code: string;
+  expireAt: number;
+}
+
+// 👈 新增：强类型 Payload 定义 (修复 3)
+export interface SendCodePayload {
+  phone?: string;
+  email?: string;
+  captchaInput: string;
+  captchaKey: string;
+}
+
+export interface RegisterPayload {
+  phone?: string;
+  email?: string;
+  password?: string;
+  code?: string;
+}
+
+export interface LoginPayload {
+  phone?: string;
+  username?: string;
+  password?: string;
+  code?: string;
+  autoLogin?: boolean;
+}
+
+export interface ResetPasswordPayload {
+  phone?: string;
+  email?: string;
+  code?: string;
+  newPassword?: string;
+}
+
+const simulateNetwork = (ms = 800) => new Promise(resolve => setTimeout(resolve, ms));
+
+const USERS_KEY = 'know_ai_users';
+const CODES_KEY = 'know_ai_verifications';
+const TOKEN_KEY = 'know_ai_token';
+const CAPTCHA_STORE = 'know_ai_captcha_temp';
+
+export const authService = {
+  // 获取图形验证码
+  async getCaptcha(): Promise<ApiResponse<{ img: string; key: string }>> {
+    await simulateNetwork(300);
+    const key = Math.random().toString(36).slice(2);
+    const text = Math.random().toString(36).slice(-4).toUpperCase();
+    localStorage.setItem(CAPTCHA_STORE, JSON.stringify({ key, text }));
+    const img = `https://dummyimage.com/120x40/6366f1/ffffff&text=${text}`;
+    return { code: 200, message: "获取成功", data: { img, key } };
+  },
+
+  // 发送动态验证码 (短信/邮箱)
+  async sendCode(payload: SendCodePayload): Promise<ApiResponse> {
+    await simulateNetwork(500);
+    // 1. 先校验图形验证码
+    const stored = JSON.parse(localStorage.getItem(CAPTCHA_STORE) || '{}');
+    if (!payload.captchaInput || payload.captchaInput.toUpperCase() !== stored.text || payload.captchaKey !== stored.key) {
+      throw new Error("图形验证码错误");
+    }
+    
+    // 👈 修复 1.3：图形验证码校验通过后立即销毁，防止重放攻击
+    localStorage.removeItem(CAPTCHA_STORE);
+
+    const code = "123456"; // Mock 固定验证码
+    const expireAt = Date.now() + 5 * 60 * 1000;
+    const codes: MockCode[] = JSON.parse(localStorage.getItem(CODES_KEY) || '[]');
+    codes.push({ phone: payload.phone, email: payload.email, code, expireAt });
+    localStorage.setItem(CODES_KEY, JSON.stringify(codes));
+    console.log(`%c[Mock API] 验证码: ${code}`, "color: red; font-weight: bold;");
+    return { code: 200, message: "动态验证码已发送" };
+  },
+
+  // 注册逻辑
+  async register(payload: RegisterPayload): Promise<ApiResponse<MockUser>> {
+    await simulateNetwork(800);
+    const users: MockUser[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+
+    // 1. 验证码校验
+    const codes: MockCode[] = JSON.parse(localStorage.getItem(CODES_KEY) || '[]');
+    // 👈 修复 1.1：解决 undefined === undefined 导致的串号漏洞
+    const isCodeValid = codes.some(c => 
+      ( (payload.phone && c.phone === payload.phone) || 
+        (payload.email && c.email === payload.email) ) && 
+      c.code === payload.code && 
+      c.expireAt > Date.now()
+    );
+
+    if (!isCodeValid) throw new Error("验证码不正确或已过期");
+
+    // 2. 唯一性校验
+    if (payload.email && users.some(u => u.email === payload.email)) throw new Error("该邮箱已被注册");
+    if (payload.phone && users.some(u => u.phone === payload.phone)) throw new Error("该手机号已被注册");
+
+    const newUser: MockUser = {
+      id: `u_${Date.now()}`,
+      phone: payload.phone,
+      email: payload.email,
+      password: payload.password || '',
+      nickname: payload.phone || payload.email?.split('@')[0] || '新用户',
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    users.push(newUser);
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    return { code: 200, message: "注册成功", data: newUser };
+  },
+
+  // 登录逻辑
+  async login(payload: LoginPayload): Promise<ApiResponse<{ token: string; user: Partial<MockUser> }>> {
+    await simulateNetwork(800);
+    const users: MockUser[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+    
+    let user: MockUser | undefined;
+    
+    if (payload.phone) {
+      // 1. 校验手机动态验证码
+      const codes: MockCode[] = JSON.parse(localStorage.getItem(CODES_KEY) || '[]');
+      const isCodeValid = codes.some(c => 
+        c.phone === payload.phone && 
+        c.code === payload.code && 
+        c.expireAt > Date.now()
+      );
+      if (!isCodeValid) throw new Error("动态验证码不正确或已过期");
+
+      // 2. 查找用户
+      user = users.find(u => u.phone === payload.phone);
+      if (!user) throw new Error("该手机号尚未注册");
+      
+    } else {
+      // 账号密码登录分支
+      const username = payload.username;
+      user = users.find(u => (u.email === username || u.phone === username) && u.password === payload.password);
+    }
+
+    if (!user) throw new Error("账号或密码错误");
+
+    const token = `mock_token_${window.btoa(user.id)}`;
+    
+    // 👈 修复 1.2：根据自动登录状态决定 Token 存储位置
+    if (payload.autoLogin) {
+      localStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.removeItem(TOKEN_KEY);
+    } else {
+      sessionStorage.setItem(TOKEN_KEY, token);
+      localStorage.removeItem(TOKEN_KEY);
+    }
+
+    return {
+      code: 200,
+      message: "登录成功",
+      data: { token, user: { nickname: user.nickname, avatar: user.avatar } }
+    };
+  },
+
+  /**
+   * 退出登录
+   */
+  async logout(): Promise<ApiResponse> {
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    return { code: 200, message: "已退出登录" };
+  },
+
+  /**
+   * 获取用户信息
+   */
+  async getProfile(): Promise<ApiResponse<MockUser>> {
+    await simulateNetwork(500);
+    // 👈 修复 1.2 配套：同时检查 localStorage 和 sessionStorage
+    const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+    if (!token) throw new Error("未登录或登录已失效");
+    
+    try {
+      const userId = window.atob(token.replace('mock_token_', ''));
+      const users: MockUser[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+      const user = users.find(u => u.id === userId);
+      
+      if (!user) throw new Error("用户不存在");
+      return { code: 200, message: "获取成功", data: user };
+    } catch (e) {
+      throw new Error("无效的身份令牌");
+    }
+  },
+
+  /**
+   * 重置密码
+   */
+  async resetPassword(payload: ResetPasswordPayload): Promise<ApiResponse> {
+    await simulateNetwork(1000);
+    const users: MockUser[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+    
+    // 1. 验证码校验
+    const codes: MockCode[] = JSON.parse(localStorage.getItem(CODES_KEY) || '[]');
+    // 👈 修复 1.1：解决 undefined === undefined 导致串号的漏洞
+    const isCodeValid = codes.some(c => 
+      ( (payload.phone && c.phone === payload.phone) || 
+        (payload.email && c.email === payload.email) ) && 
+      c.code === payload.code && 
+      c.expireAt > Date.now()
+    );
+    if (!isCodeValid) throw new Error("验证码不正确或已过期");
+
+    // 2. 查找用户
+    const userIndex = users.findIndex(u => 
+      (payload.phone && u.phone === payload.phone) || 
+      (payload.email && u.email === payload.email)
+    );
+    if (userIndex === -1) throw new Error("该账号未注册");
+
+    // 3. 更新密码
+    if (payload.newPassword) {
+      users[userIndex].password = payload.newPassword;
+    }
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    return { code: 200, message: "密码重置成功，请重新登录" };
+  }
+};
+

@@ -1,1 +1,22 @@
+/* 修改后的 index.css */
 @import "tailwindcss";
+
+
+/* 现代感十足的静止渐变背景 */
+/* 我们使用三个层级的色彩交汇，营造出柔和的“网格渐变”感 */
+.bg-static-gradient {
+  background-color: #f8fafc; /* 底色 */
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(243, 100%, 93%, 1) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(270, 100%, 94%, 1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(210, 100%, 92%, 1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(243, 100%, 95%, 1) 0px, transparent 50%);
+}
+
+/* 保留玻璃拟态效果 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
