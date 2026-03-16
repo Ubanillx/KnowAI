@@ -1,10 +1,10 @@
-import AuthPage from './pages/AuthPage';
+// src/App.tsx
+import { AppRouter } from './router';
 
-function App() {
+export default function App() {
   return (
     <div className="App">
-      <AuthPage />
+      <AppRouter />
     </div>
   );
 }
-export default App;
