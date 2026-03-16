@@ -1,233 +1,18 @@
-// pages/AuthPage.tsx
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
-import { authService } from '../services/auth';
-import logoSvg from '../assets/logo.svg';
-
-type AuthMode = 'login' | 'register' | 'forgot';
-type LoginMethod = 'phone' | 'email';
-
-const REMEMBER_KEY = 'know_ai_remembered';
-const TOKEN_KEY = 'know_ai_token';
-
-const INITIAL_FORM_DATA = {
-  areaCode: '+86', phone: '', email: '', password: '', confirmPassword: '', code: '', captchaInput: ''
-};
+// src/pages/Auth/index.tsx
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import logoSvg from '../../assets/logo.svg';
+import { useAuthLogic } from '../../hooks/useAuthLogic';
 
 export default function AuthPage() {
-  const navigate = useNavigate();
-  const [mode, setMode] = useState<AuthMode>('login');
-  const [method, setMethod] = useState<LoginMethod>('phone');
-  const [resetStep, setResetStep] = useState(1); 
-  const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  
-  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
-  const [captchaData, setCaptchaData] = useState({ img: '', key: '' });
-  const [agreed, setAgreed] = useState(false);
-  const [rememberPassword, setRememberPassword] = useState(false);
-  const [autoLogin, setAutoLogin] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
-  
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const refreshCaptcha = useCallback(async () => {
-    try {
-      const res = await authService.getCaptcha();
-      if (res.data) setCaptchaData(res.data);
-    } catch (err) { console.error("获取验证码失败"); }
-  }, []);
-
-  useEffect(() => { refreshCaptcha(); }, [refreshCaptcha, mode, method]);
-
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(REMEMBER_KEY);
-    if (saved) {
-      const { account, password } = JSON.parse(saved);
-      setFormData(prev => ({ ...prev, email: account, password: password }));
-      setRememberPassword(true);
-      setMethod('email'); 
-    }
-
-    const checkAutoLogin = async () => {
-      const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
-      if (token) { 
-        try {
-          const res = await authService.getProfile();
-          // 如果是 sessionStorage 里的 Token（单次会话），静默跳转即可，避免给用户“自动登录配置失败”的错觉
-          if (localStorage.getItem(TOKEN_KEY)) {
-            setMessage({ type: 'success', text: `自动登录中... 欢迎 ${res.data?.nickname}` });
-          }
-          timerRef.current = setTimeout(() => navigate('/dashboard'), 1000); 
-        } catch (e) {
-          localStorage.removeItem(TOKEN_KEY);
-          sessionStorage.removeItem(TOKEN_KEY);
-        }
-      }
-    };
-    checkAutoLogin();
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [navigate]);
-
-  const passwordInfo = useMemo(() => {
-    const pass = formData.password;
-    if (!pass) return { score: 0, text: '', color: 'bg-gray-200' };
-    if (pass.length < 6) return { score: 1, text: '太短', color: 'bg-red-400' };
-    let score = 0;
-    if (/[a-zA-Z]/.test(pass)) score++;
-    if (/[0-9]/.test(pass)) score++;
-    if (/[^A-Za-z0-9]/.test(pass)) score++;
-    const meta = [{ text: '弱', color: 'bg-red-400' }, { text: '中', color: 'bg-yellow-500' }, { text: '强', color: 'bg-green-500' }];
-    return { score, ...meta[Math.max(0, score - 1)] };
-  }, [formData.password]);
-
-  const handleSendCode = async () => {
-    const isPhone = method === 'phone';
-    const target = isPhone ? formData.phone : formData.email;
-
-    if (!target) return setMessage({ type: 'error', text: '请输入账号' });
-    if (isPhone && !/^\d{5,15}$/.test(formData.phone)) return setMessage({ type: 'error', text: '手机号格式不正确' });
-    if (!isPhone && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return setMessage({ type: 'error', text: '邮箱格式不正确' });
-    if (!formData.captchaInput) return setMessage({ type: 'error', text: '请输入图形验证码' });
-
-    try {
-      await authService.sendCode({
-        phone: isPhone ? `${formData.areaCode}${formData.phone}` : undefined,
-        email: (!isPhone) ? formData.email : undefined,
-        captchaInput: formData.captchaInput,
-        captchaKey: captchaData.key
-      });
-      setCountdown(60);
-      setMessage({ type: 'success', text: '验证码已发送' });
-    } catch (err) {
-      const error = err as Error;
-      setMessage({ type: 'error', text: error.message });
-      refreshCaptcha();
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage({ type: '', text: '' });
-
-    if (mode !== 'forgot' && !agreed) return setMessage({ type: 'error', text: '请阅读并勾选用户协议' });
-
-    setLoading(true);
-    try {
-      if (mode === 'forgot') {
-        if (resetStep === 1) {
-          if (!formData.code) throw new Error("请输入验证码");
-          
-          await authService.verifyCode({
-            phone: method === 'phone' ? `${formData.areaCode}${formData.phone}` : undefined,
-            email: method === 'email' ? formData.email : undefined,
-            code: formData.code
-          });
-
-          setResetStep(2);
-          setMessage({ type: 'success', text: '身份验证成功，请设置新密码' });
-        } else {
-          if (formData.password !== formData.confirmPassword) throw new Error("两次密码不一致");
-          await authService.resetPassword({
-            phone: method === 'phone' ? `${formData.areaCode}${formData.phone}` : undefined,
-            email: method === 'email' ? formData.email : undefined,
-            code: formData.code,
-            newPassword: formData.password
-          });
-          setMessage({ type: 'success', text: '密码重置成功，请登录' });
-          setMode('login');
-          setResetStep(1);
-          retainFormData(); 
-        }
-      } else if (mode === 'login') {
-        const payload = method === 'phone' 
-          ? { phone: `${formData.areaCode}${formData.phone}`, code: formData.code, autoLogin }
-          : { username: formData.email, password: formData.password, autoLogin };
-        
-        const res = await authService.login(payload);
-
-        // 🛠️ 修复：只有在使用账号密码登录时，才处理“记住密码”状态，防止污染
-        if (method === 'email') {
-          if (rememberPassword) {
-            localStorage.setItem(REMEMBER_KEY, JSON.stringify({ account: formData.email, password: formData.password }));
-          } else {
-            localStorage.removeItem(REMEMBER_KEY);
-          }
-        }
-
-        setMessage({ type: 'success', text: `欢迎回来，${res.data?.user?.nickname}` });
-        timerRef.current = setTimeout(() => navigate('/dashboard'), 800);
-        
-      } else if (mode === 'register') {
-        if (formData.password !== formData.confirmPassword) throw new Error("两次输入密码不一致");
-        await authService.register({
-          phone: method === 'phone' ? `${formData.areaCode}${formData.phone}` : undefined,
-          email: method === 'email' ? formData.email : undefined,
-          password: formData.password,
-          code: formData.code
-        });
-        setMessage({ type: 'success', text: '注册成功' });
-        setMode('login');
-        retainFormData(); 
-      }
-    } catch (err) {
-      const error = err as Error;
-      setMessage({ type: 'error', text: error.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const retainFormData = () => {
-    setFormData(prev => ({
-      ...prev,
-      password: '', confirmPassword: '', code: '', captchaInput: ''
-    }));
-  };
-
-  const handleMethodSwitch = (m: LoginMethod) => {
-    setMethod(m);
-    setMessage({type:'', text:''});
-    setFormData(prev => ({
-      ...prev,
-      [m === 'phone' ? 'email' : 'phone']: '',
-      password: '', confirmPassword: '', code: '', captchaInput: ''
-    }));
-  };
-
-  const switchMode = (newMode: AuthMode) => {
-    setMode(newMode);
-    setMessage({type:'', text:''});
-    retainFormData(); 
-    if (newMode === 'login') setResetStep(1);
-  };
-
-  // 🛠️ 修复：复选框改变时即刻清理数据，不留后患
-  const handleRememberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-    setRememberPassword(checked);
-    if (!checked) localStorage.removeItem(REMEMBER_KEY);
-  };
-
-  const handleAutoLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-    setAutoLogin(checked);
-    if (!checked) localStorage.removeItem(TOKEN_KEY); 
-  };
-
-  const needsVerification = !(mode === 'login' && method === 'email');
+  // 🎉 一行代码接管所有核心业务逻辑！
+  const {
+    mode, method, resetStep, loading, formData, setFormData, agreed, setAgreed,
+    rememberPassword, autoLogin, message, passwordInfo, needsVerification,
+    countdown, captchaData, refreshCaptcha,
+    handleSendCode, handleSubmit, handleMethodSwitch, switchMode,
+    handleRememberChange, handleAutoLoginChange
+  } = useAuthLogic();
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-static-gradient p-4 sm:p-6 overflow-y-auto">
@@ -317,6 +102,7 @@ export default function AuthPage() {
                 label={mode === 'forgot' ? "新密码" : (mode === 'register' ? "设置密码" : "密码")} 
                 type="password" placeholder="请输入密码" autoComplete="new-password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required 
               />
+              
               {mode !== 'login' && formData.password && (
                 <div className="px-1">
                   <div className="flex justify-between items-center mb-1">
@@ -338,7 +124,7 @@ export default function AuthPage() {
 
           {mode === 'login' && (
             <div className="flex flex-wrap items-center justify-between gap-y-2 px-1 text-[10px] sm:text-xs animate-in fade-in duration-300">
-              <div className="flex items-center gap-3 sm:gap-4">
+               <div className="flex items-center gap-3 sm:gap-4">
                 {method === 'email' && (
                   <>
                     <label className="flex items-center gap-2 cursor-pointer group">
@@ -351,7 +137,7 @@ export default function AuthPage() {
                     </label>
                   </>
                 )}
-              </div>
+               </div>
               <button type="button" onClick={() => switchMode('forgot')} className="font-bold text-indigo-600 hover:text-indigo-500 underline underline-offset-2 transition-colors">忘记密码？</button>
             </div>
           )}

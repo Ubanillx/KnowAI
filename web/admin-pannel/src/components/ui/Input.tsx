@@ -33,3 +33,4 @@ export const Input = ({ label, error, leftElement, rightElement, ...props }: Inp
     {error && <p className="text-[10px] text-red-500 ml-1 mt-0.5 font-medium animate-in fade-in zoom-in-95">{error}</p>}
   </div>
 );
+
